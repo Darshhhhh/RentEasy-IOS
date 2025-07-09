@@ -2,9 +2,8 @@
 //  TenantPropertyDetailView.swift
 //  G1_Rental
 //
-//  Created by Darsh on 2025-07-08.
+//  Updated by Darsh on 2025-07-12.
 //
-
 
 import SwiftUI
 import MapKit
@@ -14,13 +13,17 @@ struct TenantPropertyDetailView: View {
     @EnvironmentObject var authVM: AuthViewModel
     @Environment(\.presentationMode) var presentation
 
-    @State private var shortlistItems: [ShortlistModel] = []
-    @State private var isShortlisted = false
-    @State private var showRemoveConfirmation = false
-    @State private var showShortlistAlert     = false
-    @State private var shortlistMessage       = ""
-    @State private var showRequestAlert       = false
-    @State private var requestSent            = false
+    // Shortlist state
+    @State private var isShortlisted           = false
+    @State private var showRemoveShortlistCD   = false
+    @State private var showShortlistAlert      = false
+    @State private var shortlistMessage        = ""
+
+    // Request state
+    @State private var currentRequest: RequestModel?
+    @State private var requestSent             = false
+    @State private var showWithdrawConfirmation = false
+    @State private var showRequestAlert        = false
 
     private let service = FirestoreService()
 
@@ -36,25 +39,32 @@ struct TenantPropertyDetailView: View {
                     .cornerRadius(12)
                 }
 
-                // Property details (flush left)
+                // Property fields
                 VStack(alignment: .leading, spacing: 20) {
-                    fieldRow(icon: "house.fill",              label: "Title",            value: property.title)
-                    fieldRow(icon: "doc.text.fill",           label: "Description",      value: property.description)
-                    fieldRow(icon: "mappin.and.ellipse",      label: "Address",          value: property.address)
-                    fieldRow(icon: "dollarsign.circle.fill",  label: "Monthly Rent",     value: String(format: "$%.0f", property.monthlyRent))
-                    fieldRow(icon: "bed.double.fill",         label: "Bedrooms",         value: "\(property.bedrooms)")
-                    fieldRow(icon: "ruler.fill",              label: "Square Footage",   value: String(format: "%.0f sq ft", property.squareFootage))
-                    fieldRow(icon: "bathtub.fill",            label: "Bathrooms",        value: String(format: "%.1f", property.bathrooms))
-                    fieldRow(icon: "phone.fill",              label: "Contact Info",     value: property.contactInfo)
-                    fieldRow(icon: "calendar",                label: "Available From",   value: DateFormatter.localizedString(from: property.availableFrom, dateStyle: .medium, timeStyle: .none))
+                    fieldRow(icon: "house.fill",             label: "Title",          value: property.title)
+                    fieldRow(icon: "doc.text.fill",          label: "Description",    value: property.description)
+                    fieldRow(icon: "mappin.and.ellipse",     label: "Address",        value: property.address)
+                    fieldRow(icon: "dollarsign.circle.fill", label: "Monthly Rent",   value: String(format: "$%.0f", property.monthlyRent))
+                    fieldRow(icon: "bed.double.fill",        label: "Bedrooms",       value: "\(property.bedrooms)")
+                    fieldRow(icon: "ruler.fill",             label: "Square Footage", value: String(format: "%.0f sq ft", property.squareFootage))
+                    fieldRow(icon: "bathtub.fill",           label: "Bathrooms",      value: String(format: "%.1f", property.bathrooms))
+                    fieldRow(icon: "phone.fill",             label: "Contact Info",   value: property.contactInfo)
+                    fieldRow(icon: "calendar",               label: "Available From", value:
+                        DateFormatter.localizedString(
+                            from: property.availableFrom,
+                            dateStyle: .medium,
+                            timeStyle: .none
+                        )
+                    )
                 }
+                .padding(.horizontal)
 
-                // Actions (tenant only; guest sees disabled buttons)
+                // Actions
                 VStack(spacing: 16) {
                     // Shortlist toggle
                     Button {
                         if isShortlisted {
-                            showRemoveConfirmation = true
+                            showRemoveShortlistCD = true
                         } else {
                             addToShortlist()
                         }
@@ -68,44 +78,63 @@ struct TenantPropertyDetailView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(isShortlisted ? .red : .blue)
+                    .confirmationDialog(
+                        "Remove this property from your shortlist?",
+                        isPresented: $showRemoveShortlistCD,
+                        titleVisibility: .visible
+                    ) {
+                        Button("Remove", role: .destructive) {
+                            removeFromShortlist()
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    }
                     .alert(shortlistMessage, isPresented: $showShortlistAlert) {
                         Button("OK", role: .cancel) {}
                     }
-                    .confirmationDialog(
-                        "Remove this property from your shortlist?",
-                        isPresented: $showRemoveConfirmation,
-                        titleVisibility: .visible
-                    ) {
-                        Button("Remove", role: .destructive) { removeFromShortlist() }
-                        Button("Cancel", role: .cancel) {}
-                    }
-                    .disabled(authVM.user?.role != "tenant")  // guest/landlord can't shortlist
+                    .disabled(authVM.user?.role != "tenant")
 
-                    // Request button
+                    // Request / Withdraw toggle
                     Button {
-                        sendRequest()
+                        if requestSent {
+                            showWithdrawConfirmation = true
+                        } else {
+                            sendRequest()
+                        }
                     } label: {
                         Label(
-                            requestSent ? "Request Sent" : "Request Property",
-                            systemImage: requestSent ? "checkmark.circle.fill" : "envelope.fill"
+                            requestSent ? "Withdraw Request" : "Request Property",
+                            systemImage: requestSent ? "arrow.uturn.backward.circle.fill" : "envelope.fill"
                         )
                         .frame(maxWidth: .infinity)
                         .padding()
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(requestSent ? .gray : .green)
-                    .disabled(requestSent || authVM.user?.role != "tenant")
-                    .alert("Inquiry sent", isPresented: $showRequestAlert) {
+                    .tint(requestSent ? .red : .green)
+                    .disabled(authVM.user?.role != "tenant")
+                    .confirmationDialog(
+                        "Are you sure you want to withdraw your inquiry?",
+                        isPresented: $showWithdrawConfirmation,
+                        titleVisibility: .visible
+                    ) {
+                        Button("Withdraw", role: .destructive) {
+                            withdrawRequest()
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    }
+                    .alert("Request \(requestSent ? "withdrawn" : "sent")", isPresented: $showRequestAlert) {
                         Button("OK", role: .cancel) {}
                     }
                 }
+                .padding(.horizontal)
             }
-            .padding(.top) // breathing room at top
+            .padding(.top)
         }
         .navigationTitle("Details")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear(perform: loadShortlist)
+        .onAppear(perform: loadInitialState)
     }
+
+    // MARK: — Helpers
 
     private func fieldRow(icon: String, label: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -117,12 +146,25 @@ struct TenantPropertyDetailView: View {
         }
     }
 
-    private func loadShortlist() {
+    private func loadInitialState() {
         guard let uid = authVM.user?.uid else { return }
+        // shortlist
         service.fetchShortlist(tenantId: uid) { result in
             DispatchQueue.main.async {
                 if case .success(let items) = result {
-                    self.isShortlisted = items.contains { $0.propertyId == property.id }
+                    isShortlisted = items.contains { $0.propertyId == property.id }
+                }
+            }
+        }
+        // existing request?
+        service.fetchTenantRequest(tenantId: uid, propertyId: property.id) { result in
+            DispatchQueue.main.async {
+                if case .success(let req) = result, let req = req {
+                    currentRequest = req
+                    requestSent    = true
+                } else {
+                    currentRequest = nil
+                    requestSent    = false
                 }
             }
         }
@@ -130,30 +172,33 @@ struct TenantPropertyDetailView: View {
 
     private func addToShortlist() {
         guard let uid = authVM.user?.uid else { return }
-        let item = ShortlistModel(id: UUID().uuidString,
-                                  tenantId: uid,
-                                  propertyId: property.id,
-                                  createdAt: Date())
+        let item = ShortlistModel(
+            id: UUID().uuidString,
+            tenantId: uid,
+            propertyId: property.id,
+            createdAt: Date()
+        )
         service.addToShortlist(item) { err in
             DispatchQueue.main.async {
                 guard err == nil else { return }
-                self.isShortlisted = true
-                self.shortlistMessage = "Added to shortlist"
-                self.showShortlistAlert = true
+                isShortlisted    = true
+                shortlistMessage = "Added to shortlist"
+                showShortlistAlert = true
             }
         }
     }
 
     private func removeFromShortlist() {
-        service.fetchShortlist(tenantId: authVM.user!.uid) { result in
+        guard let uid = authVM.user?.uid else { return }
+        service.fetchShortlist(tenantId: uid) { result in
             if case .success(let items) = result,
                let entry = items.first(where: { $0.propertyId == property.id }) {
                 service.removeFromShortlist(entry) { err in
                     DispatchQueue.main.async {
                         guard err == nil else { return }
-                        self.isShortlisted = false
-                        self.shortlistMessage = "Removed from shortlist"
-                        self.showShortlistAlert = true
+                        isShortlisted    = false
+                        shortlistMessage = "Removed from shortlist"
+                        showShortlistAlert = true
                     }
                 }
             }
@@ -162,17 +207,34 @@ struct TenantPropertyDetailView: View {
 
     private func sendRequest() {
         guard let uid = authVM.user?.uid else { return }
-        let req = RequestModel(id: UUID().uuidString,
-                               propertyId: property.id,
-                               ownerId: property.ownerId,
-                               tenantId: uid,
-                               status: "pending",
-                               createdAt: Date())
-        service.sendRequest(req) { _ in
+        let req = RequestModel(
+            id: UUID().uuidString,
+            propertyId: property.id,
+            ownerId: property.ownerId,
+            tenantId: uid,
+            status: "pending",
+            createdAt: Date()
+        )
+        service.sendRequest(req) { err in
             DispatchQueue.main.async {
-                self.requestSent = true
-                self.showRequestAlert = true
+                guard err == nil else { return }
+                currentRequest = req
+                requestSent    = true
+                showRequestAlert = true
+            }
+        }
+    }
+
+    private func withdrawRequest() {
+        guard let req = currentRequest else { return }
+        service.deleteRequest(requestId: req.id) { err in
+            DispatchQueue.main.async {
+                guard err == nil else { return }
+                currentRequest = nil
+                requestSent    = false
+                showRequestAlert = true
             }
         }
     }
 }
+

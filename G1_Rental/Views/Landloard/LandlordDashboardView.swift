@@ -5,6 +5,12 @@
 //  Created by Darsh on 2025-07-08.
 //
 
+//
+//  LandlordDashboardView.swift
+//  G1_Rental
+//
+//  Updated by Darsh on 2025-07-12.
+//
 
 import SwiftUI
 
@@ -12,9 +18,19 @@ struct LandlordDashboardView: View {
     @EnvironmentObject var authVM: AuthViewModel
     @StateObject private var vm = PropertyViewModel()
     @State private var showAdd = false
+    @State private var searchText = ""
+
+    // Filtered list based on search text
+    private var filteredProperties: [PropertyModel] {
+        guard !searchText.isEmpty else { return vm.properties }
+        return vm.properties.filter {
+            $0.title.localizedCaseInsensitiveContains(searchText) ||
+            $0.address.localizedCaseInsensitiveContains(searchText)
+        }
+    }
 
     var body: some View {
-        List(vm.properties) { prop in
+        List(filteredProperties) { prop in
             NavigationLink {
                 PropertyDetailView(property: prop)
                     .environmentObject(authVM)
@@ -39,6 +55,7 @@ struct LandlordDashboardView: View {
         }
         .listStyle(.insetGrouped)
         .navigationTitle("My Properties")
+        .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always))
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
@@ -59,3 +76,5 @@ struct LandlordDashboardView: View {
         }
     }
 }
+
+

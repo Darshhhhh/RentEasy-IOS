@@ -5,6 +5,13 @@
 //  Updated by Darsh on 2025-07-09.
 //
 
+//
+//  RequestDetailView.swift
+//  G1_Rental
+//
+//  Updated by Darsh on 2025-07-11.
+//
+
 import SwiftUI
 import UIKit
 
@@ -13,9 +20,13 @@ struct RequestDetailView: View {
     @Environment(\.presentationMode) var presentation
 
     let request: RequestModel
+
     @State private var status: String
-    @State private var propertyName: String = "Loading…"
     @State private var tenantEmail: String  = "Loading…"
+    
+    // holds the full PropertyModel so we can navigate to its detail view
+    @State private var propertyModel: PropertyModel?
+    @State private var propertyName:  String = "Loading…"
 
     private let service = FirestoreService()
 
@@ -34,13 +45,26 @@ struct RequestDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-
-                // Property
-                infoRow(
-                    icon: "house.fill",
-                    label: "Property",
-                    value: propertyName
-                )
+                
+                // Property row: tappable if we have the model
+                if let prop = propertyModel {
+                    NavigationLink {
+                        PropertyDetailView(property: prop)
+                            .environmentObject(authVM)
+                    } label: {
+                        infoRow(
+                            icon: "house.fill",
+                            label: "Property",
+                            value: propertyName
+                        )
+                    }
+                } else {
+                    infoRow(
+                        icon: "house.fill",
+                        label: "Property",
+                        value: propertyName
+                    )
+                }
 
                 // Requested By
                 infoRow(
@@ -56,7 +80,7 @@ struct RequestDetailView: View {
                     value: formattedDate
                 )
 
-                // Status row with icon, label, and dropdown
+                // Status picker row
                 HStack(spacing: 8) {
                     Image(systemName: "slider.horizontal.3")
                         .font(.title2)
@@ -100,7 +124,7 @@ struct RequestDetailView: View {
         .navigationTitle("Request Details")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            loadPropertyName()
+            loadProperty()
             loadTenantEmail()
         }
     }
@@ -122,13 +146,15 @@ struct RequestDetailView: View {
         .padding(.vertical, 6)
     }
 
-    private func loadPropertyName() {
+    private func loadProperty() {
         service.fetchProperty(id: request.propertyId) { result in
             DispatchQueue.main.async {
-                if case .success(let prop) = result {
-                    propertyName = prop.title
-                } else {
-                    propertyName = "Unknown Property"
+                switch result {
+                case .success(let prop):
+                    self.propertyModel = prop
+                    self.propertyName  = prop.title
+                case .failure:
+                    self.propertyName = "Unknown Property"
                 }
             }
         }

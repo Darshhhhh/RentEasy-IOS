@@ -327,4 +327,51 @@ class FirestoreService {
           .document(s.id)
           .delete(completion: completion)
     }
+    
+    func fetchTenantRequest(
+            tenantId: String,
+            propertyId: String,
+            completion: @escaping (Result<RequestModel?, Error>) -> Void
+        ) {
+            db.collection(Constants.requestsCollection)
+              .whereField("tenantId", isEqualTo: tenantId)
+              .whereField("propertyId", isEqualTo: propertyId)
+              .getDocuments { snap, err in
+                if let err = err {
+                    return completion(.failure(err))
+                }
+                // Expect zero or one match
+                let model = snap?
+                  .documents
+                  .compactMap { doc -> RequestModel? in
+                    let d = doc.data()
+                    guard
+                      let ownerId = d["ownerId"] as? String,
+                      let tenantId = d["tenantId"] as? String,
+                      let status   = d["status"]   as? String,
+                      let ts       = d["createdAt"] as? Timestamp
+                    else { return nil }
+                    return RequestModel(
+                      id: doc.documentID,
+                      propertyId: propertyId,
+                      ownerId: ownerId,
+                      tenantId: tenantId,
+                      status: status,
+                      createdAt: ts.dateValue()
+                    )
+                  }
+                  .first
+                completion(.success(model))
+              }
+        }
+
+        // Delete a request document by its ID
+        func deleteRequest(
+            requestId: String,
+            completion: @escaping (Error?) -> Void
+        ) {
+            db.collection(Constants.requestsCollection)
+              .document(requestId)
+              .delete(completion: completion)
+        }
 }

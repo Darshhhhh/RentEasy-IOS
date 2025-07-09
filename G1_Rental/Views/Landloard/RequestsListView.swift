@@ -13,18 +13,31 @@ struct RequestsListView: View {
     @StateObject private var vm = RequestViewModel()
 
     var body: some View {
-        List {
-            ForEach(vm.requests) { req in
-                NavigationLink {
-                    RequestDetailView(request: req)
-                        .environmentObject(authVM)
-                } label: {
-                    RequestRowView(request: req)
+        Group {
+            if vm.requests.isEmpty {
+                // No‐requests placeholder
+                VStack {
+                    Spacer()
+                    Text("No requests")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    Spacer()
                 }
-                .listRowSeparator(.hidden)
+            } else {
+                List {
+                    ForEach(vm.requests) { req in
+                        NavigationLink {
+                            RequestDetailView(request: req)
+                                .environmentObject(authVM)
+                        } label: {
+                            RequestRowView(request: req)
+                        }
+                        .listRowSeparator(.hidden)
+                    }
+                }
+                .listStyle(.insetGrouped)
             }
         }
-        .listStyle(.insetGrouped)
         .navigationTitle("Requests")
         .onAppear {
             if let uid = authVM.user?.uid {
@@ -34,6 +47,7 @@ struct RequestsListView: View {
     }
 }
 
+// RequestRowView unchanged
 struct RequestRowView: View {
     let request: RequestModel
     @State private var propertyName: String = "Loading…"
@@ -98,3 +112,4 @@ struct RequestRowView: View {
         }
     }
 }
+
