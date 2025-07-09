@@ -5,6 +5,7 @@
 //  Created by Darsh on 2025-07-08.
 //
 
+import SwiftUI
 
 import SwiftUI
 
@@ -13,16 +14,32 @@ struct ShortlistView: View {
     @StateObject private var vm = ShortlistViewModel()
 
     var body: some View {
-        List(vm.items) { item in
-            Text(item.propertyId) // you could fetch property details if you like
-                .swipeActions {
-                    Button(role: .destructive) {
-                        vm.remove(item)
-                    } label: {
-                        Label("Remove", systemImage: "trash")
+        List {
+            ForEach(vm.properties) { prop in
+                NavigationLink {
+                    TenantPropertyDetailView(property: prop)
+                        .environmentObject(authVM)
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "star.fill")
+                            .font(.title2)
+                            .foregroundColor(.yellow)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(prop.title)
+                                .font(.headline)
+                            Text(String(format: "$%.0f/mo · %d bd", prop.monthlyRent, prop.bedrooms))
+                                .font(.subheadline)
+                            Text(prop.address)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
+                    .padding(.vertical, 8)
                 }
+                .listRowSeparator(.hidden)
+            }
         }
+        .listStyle(.insetGrouped)
         .navigationTitle("Shortlist")
         .onAppear {
             if let uid = authVM.user?.uid {

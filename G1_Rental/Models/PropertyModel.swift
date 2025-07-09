@@ -11,11 +11,17 @@ import Foundation
 struct PropertyModel: Identifiable {
     let id: String
     let ownerId: String
-    let title: String
-    let description: String
-    let address: String
-    let latitude: Double?
-    let longitude: Double?
-    let isListed: Bool
+    var title: String
+    var description: String
+    var address: String
+    var latitude: Double?
+    var longitude: Double?
+    var monthlyRent: Double
+    var bedrooms: Int
+    var squareFootage: Double
+    var bathrooms: Double
+    var contactInfo: String
+    var availableFrom: Date
+    var isListed: Bool
     let createdAt: Date
 }

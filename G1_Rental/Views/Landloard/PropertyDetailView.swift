@@ -11,71 +11,96 @@ import MapKit
 struct PropertyDetailView: View {
     @EnvironmentObject var authVM: AuthViewModel
     @Environment(\.presentationMode) var presentation
-    
+
     let property: PropertyModel
-    @State private var isEditing = false
-    
+    @State private var isEditing           = false
+
     // Editable fields
-    @State private var titleText: String
-    @State private var descriptionText: String
-    @State private var addressText: String
-    
-    // Alert & confirmation flags
+    @State private var titleText           : String
+    @State private var descriptionText     : String
+    @State private var addressText         : String
+    @State private var monthlyRentText     : String
+    @State private var bedroomsText        : String
+    @State private var squareFootageText   : String
+    @State private var bathroomsText       : String
+    @State private var contactInfoText     : String
+    @State private var availableFrom       : Date
+
     @State private var showDeleteConfirmation = false
     @State private var showUpdateSuccess      = false
-    
+
     private let service = FirestoreService()
-    
+
     init(property: PropertyModel) {
-        self.property = property
-        _titleText       = State(initialValue: property.title)
-        _descriptionText = State(initialValue: property.description)
-        _addressText     = State(initialValue: property.address)
+        self.property            = property
+        _titleText               = State(initialValue: property.title)
+        _descriptionText         = State(initialValue: property.description)
+        _addressText             = State(initialValue: property.address)
+        _monthlyRentText         = State(initialValue: String(property.monthlyRent))
+        _bedroomsText            = State(initialValue: String(property.bedrooms))
+        _squareFootageText       = State(initialValue: String(property.squareFootage))
+        _bathroomsText           = State(initialValue: String(property.bathrooms))
+        _contactInfoText         = State(initialValue: property.contactInfo)
+        _availableFrom           = State(initialValue: property.availableFrom)
     }
-    
+
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
-                
-                // Map preview
+                // Map
                 if let lat = property.latitude,
                    let lon = property.longitude {
-                    MapView(coordinate: CLLocationCoordinate2D(latitude: lat,
-                                                              longitude: lon))
+                    MapView(coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon))
                         .frame(height: 200)
                         .cornerRadius(12)
                         .padding(.horizontal)
                 }
-                
+
                 // Data fields
                 VStack(alignment: .leading, spacing: 20) {
-                    fieldRow(icon: "house.fill", label: "Property Name", content: $titleText)
-                    fieldRow(icon: "doc.text.fill", label: "Property Description", content: $descriptionText)
+                    fieldRow(icon: "textformat", label: "Title", content: $titleText)
+                    fieldRow(icon: "doc.text", label: "Description", content: $descriptionText)
                     fieldRow(icon: "mappin.and.ellipse", label: "Address", content: $addressText)
+
+                    // ─── New fields ───────────────────
+                    fieldRow(icon: "dollarsign.circle", label: "Monthly Rent", content: $monthlyRentText)
+                    fieldRow(icon: "bed.double.fill",  label: "Bedrooms",     content: $bedroomsText)
+                    fieldRow(icon: "ruler",            label: "Square Footage",content: $squareFootageText)
+                    fieldRow(icon: "bathtub.fill",     label: "Bathrooms",    content: $bathroomsText)
+                    fieldRow(icon: "phone.fill",       label: "Contact Info", content: $contactInfoText)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Image(systemName: "calendar")
+                            Text("Available From")
+                                .font(.headline)
+                        }
+                        if isEditing {
+                            DatePicker("", selection: $availableFrom, displayedComponents: .date)
+                                .datePickerStyle(.compact)
+                        } else {
+                            Text(availableFrom, style: .date)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    // ──────────────────────────────────
                 }
                 .padding(.horizontal)
-                
-                Spacer(minLength: 20)
-                
+
                 // Action buttons
                 VStack(spacing: 12) {
                     Button {
-                        if isEditing {
-                            saveChanges()
-                        } else {
-                            isEditing = true
-                        }
+                        if isEditing { saveChanges() }
+                        else        { isEditing = true }
                     } label: {
-                        Label(
-                            isEditing ? "Save Changes" : "Edit Property",
-                            systemImage: isEditing ? "square.and.arrow.down" : "square.and.pencil"
-                        )
-                        .frame(maxWidth: .infinity)
-                        .padding()
+                        Label(isEditing ? "Save Changes" : "Edit Property",
+                              systemImage: isEditing ? "square.and.arrow.down" : "square.and.pencil")
+                            .frame(maxWidth: .infinity)
+                            .padding()
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(.blue)
-                    
+
                     Button(role: .destructive) {
                         showDeleteConfirmation = true
                     } label: {
@@ -92,7 +117,6 @@ struct PropertyDetailView: View {
         }
         .navigationTitle("Property Details")
         .navigationBarTitleDisplayMode(.inline)
-        // Confirmation for delete
         .confirmationDialog(
             "Are you sure you want to delete this property?",
             isPresented: $showDeleteConfirmation,
@@ -103,14 +127,12 @@ struct PropertyDetailView: View {
             }
             Button("Cancel", role: .cancel) { }
         }
-        // Alert on successful update
         .alert("Property updated successfully", isPresented: $showUpdateSuccess) {
             Button("OK", role: .cancel) { }
         }
     }
-    
-    // MARK: - Field row helper
-    
+
+    // Helper to draw a label + textfield/text
     private func fieldRow(icon: String, label: String, content: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
@@ -123,15 +145,20 @@ struct PropertyDetailView: View {
                     .textFieldStyle(RoundedBorderTextFieldStyle())
             } else {
                 Text(content.wrappedValue)
-                    .font(.body)
                     .foregroundColor(.secondary)
             }
         }
     }
-    
-    // MARK: - Save & Delete
-    
+
     private func saveChanges() {
+        // Validate numeric inputs
+        guard
+            let rent  = Double(monthlyRentText),
+            let beds  = Int(bedroomsText),
+            let sqft  = Double(squareFootageText),
+            let baths = Double(bathroomsText)
+        else { return }
+
         let updated = PropertyModel(
             id: property.id,
             ownerId: property.ownerId,
@@ -140,30 +167,32 @@ struct PropertyDetailView: View {
             address: addressText,
             latitude: property.latitude,
             longitude: property.longitude,
+
+            // new
+            monthlyRent:   rent,
+            bedrooms:      beds,
+            squareFootage: sqft,
+            bathrooms:     baths,
+            contactInfo:   contactInfoText,
+            availableFrom: availableFrom,
+
             isListed: property.isListed,
             createdAt: property.createdAt
         )
+
         service.updateProperty(updated) { error in
             DispatchQueue.main.async {
                 if error == nil {
                     isEditing = false
                     showUpdateSuccess = true
                 }
-                // else: handle error if desired
             }
         }
     }
-    
+
     private func deleteProperty() {
-        service.deletePropertyAndRequests(propertyId: property.id) { err in
-            DispatchQueue.main.async {
-                if let err = err {
-                    // handle error (e.g. show an alert)
-                    print("Delete failed:", err)
-                } else {
-                    presentation.wrappedValue.dismiss()
-                }
-            }
+        service.deleteProperty(property) { _ in
+            presentation.wrappedValue.dismiss()
         }
     }
 }

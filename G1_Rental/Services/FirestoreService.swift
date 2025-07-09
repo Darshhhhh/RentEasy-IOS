@@ -11,89 +11,101 @@ class FirestoreService {
 
     // MARK: — Fetch single user
     func fetchUser(uid: String, completion: @escaping (Result<UserModel, Error>) -> Void) {
-        db.collection(Constants.usersCollection)
-          .document(uid)
-          .getDocument { snapshot, error in
-            if let error = error {
-              return completion(.failure(error))
-            }
-            guard let data = snapshot?.data() else {
-              return completion(.failure(FirestoreError.parsingError))
-            }
+            db.collection(Constants.usersCollection)
+              .document(uid)
+              .getDocument { snapshot, error in
+                if let error = error {
+                  return completion(.failure(error))
+                }
+                guard let data = snapshot?.data() else {
+                  return completion(.failure(FirestoreError.parsingError))
+                }
 
-            // Required
-            guard
-              let email = data["email"] as? String,
-              let name  = data["name"]  as? String,
-              let role  = data["role"]  as? String
-            else {
-              return completion(.failure(FirestoreError.parsingError))
+                // Required
+                guard
+                  let email = data["email"] as? String,
+                  let name  = data["name"]  as? String,
+                  let role  = data["role"]  as? String
+                else {
+                  return completion(.failure(FirestoreError.parsingError))
+                }
+
+                // Optional with defaults
+                let contact    = data["contact"]    as? String ?? ""
+                let cardNumber = data["cardNumber"] as? String
+                               ?? data["paymentInfo"] as? String
+                               ?? ""
+
+                let user = UserModel(
+                    uid: uid,
+                    email: email,
+                    name: name,
+                    role: role,
+                    contact: contact,
+                    cardNumber: cardNumber
+                )
+                completion(.success(user))
             }
-
-            // Optional with defaults
-            let contact    = data["contact"]    as? String ?? ""
-            let cardNumber = data["cardNumber"] as? String
-                           ?? data["paymentInfo"] as? String
-                           ?? ""
-
-            let user = UserModel(
-                uid: uid,
-                email: email,
-                name: name,
-                role: role,
-                contact: contact,
-                cardNumber: cardNumber
-            )
-            completion(.success(user))
         }
-    }
-
     // MARK: — Update profile
     func updateUserProfile(_ user: UserModel, completion: @escaping (Error?) -> Void) {
-        let data: [String:Any] = [
-            "name": user.name,
-            "contact": user.contact,
-            "cardNumber": user.cardNumber
-        ]
-        db.collection(Constants.usersCollection)
-          .document(user.uid)
-          .setData(data, merge: true, completion: completion)
-    }
-
+            let data: [String:Any] = [
+                "name": user.name,
+                "contact": user.contact,
+                "cardNumber": user.cardNumber
+            ]
+            db.collection(Constants.usersCollection)
+              .document(user.uid)
+              .setData(data, merge: true, completion: completion)
+        }
     // MARK: — Fetch all listed properties
     func fetchProperties(completion: @escaping (Result<[PropertyModel], Error>) -> Void) {
-        db.collection(Constants.propertiesCollection)
-          .whereField("isListed", isEqualTo: true)
-          .addSnapshotListener { snapshot, error in
-            if let error = error {
-                return completion(.failure(error))
-            }
-            let models: [PropertyModel] = snapshot?.documents.compactMap { doc in
-                let d = doc.data()
-                guard
-                    let ownerId  = d["ownerId"]   as? String,
-                    let title    = d["title"]     as? String,
-                    let desc     = d["description"]as? String,
-                    let address  = d["address"]   as? String,
-                    let isListed = d["isListed"]  as? Bool,
-                    let ts       = d["createdAt"] as? Timestamp
-                else { return nil }
+            db.collection(Constants.propertiesCollection)
+              .whereField("isListed", isEqualTo: true)
+              .addSnapshotListener { snapshot, error in
+                if let error = error {
+                    return completion(.failure(error))
+                }
+                let models: [PropertyModel] = snapshot?.documents.compactMap { doc in
+                    let d = doc.data()
+                    guard
+                        let ownerId      = d["ownerId"]       as? String,
+                        let title        = d["title"]         as? String,
+                        let desc         = d["description"]   as? String,
+                        let address      = d["address"]       as? String,
+                        let isListed     = d["isListed"]      as? Bool,
+                        let tsCreated    = d["createdAt"]     as? Timestamp,
+                        let monthlyRent  = d["monthlyRent"]   as? Double,
+                        let bedrooms     = d["bedrooms"]      as? Int,
+                        let squareFoot   = d["squareFootage"] as? Double,
+                        let bathrooms    = d["bathrooms"]     as? Double,
+                        let contactInfo  = d["contactInfo"]   as? String,
+                        let tsAvailable  = d["availableFrom"] as? Timestamp
+                    else {
+                        return nil
+                    }
 
-                return PropertyModel(
-                    id: doc.documentID,
-                    ownerId: ownerId,
-                    title: title,
-                    description: desc,
-                    address: address,
-                    latitude: d["latitude"]   as? Double,
-                    longitude: d["longitude"] as? Double,
-                    isListed: isListed,
-                    createdAt: ts.dateValue()
-                )
-            } ?? []
-            completion(.success(models))
+                    return PropertyModel(
+                        id: doc.documentID,
+                        ownerId: ownerId,
+                        title: title,
+                        description: desc,
+                        address: address,
+                        latitude: d["latitude"]   as? Double,
+                        longitude: d["longitude"] as? Double,
+                        monthlyRent:   monthlyRent,
+                        bedrooms:      bedrooms,
+                        squareFootage: squareFoot,
+                        bathrooms:     bathrooms,
+                        contactInfo:   contactInfo,
+                        availableFrom: tsAvailable.dateValue(),
+                        isListed: isListed,
+                        createdAt: tsCreated.dateValue()
+                    )
+                } ?? []
+                completion(.success(models))
+            }
         }
-    }
     
     // MARK: — Fetch single property
     func fetchProperty(id: String, completion: @escaping (Result<PropertyModel, Error>) -> Void) {
@@ -105,65 +117,91 @@ class FirestoreService {
                 }
                 guard
                   let d = snap?.data(),
-                  let ownerId   = d["ownerId"]   as? String,
-                  let title     = d["title"]     as? String,
-                  let desc      = d["description"]as? String,
-                  let address   = d["address"]   as? String,
-                  let isListed  = d["isListed"]  as? Bool,
-                  let ts        = d["createdAt"] as? Timestamp
+                  let ownerId      = d["ownerId"]       as? String,
+                  let title        = d["title"]         as? String,
+                  let desc         = d["description"]   as? String,
+                  let address      = d["address"]       as? String,
+                  let isListed     = d["isListed"]      as? Bool,
+                  let tsCreated    = d["createdAt"]     as? Timestamp,
+                  let monthlyRent  = d["monthlyRent"]   as? Double,
+                  let bedrooms     = d["bedrooms"]      as? Int,
+                  let squareFoot   = d["squareFootage"] as? Double,
+                  let bathrooms    = d["bathrooms"]     as? Double,
+                  let contactInfo  = d["contactInfo"]   as? String,
+                  let tsAvailable  = d["availableFrom"] as? Timestamp
                 else {
                   return completion(.failure(FirestoreError.parsingError))
                 }
+
                 let prop = PropertyModel(
-                  id: id,
-                  ownerId: ownerId,
-                  title: title,
-                  description: desc,
-                  address: address,
-                  latitude: d["latitude"]   as? Double,
-                  longitude: d["longitude"] as? Double,
-                  isListed: isListed,
-                  createdAt: ts.dateValue()
+                    id: id,
+                    ownerId: ownerId,
+                    title: title,
+                    description: desc,
+                    address: address,
+                    latitude: d["latitude"]   as? Double,
+                    longitude: d["longitude"] as? Double,
+                    monthlyRent:   monthlyRent,
+                    bedrooms:      bedrooms,
+                    squareFootage: squareFoot,
+                    bathrooms:     bathrooms,
+                    contactInfo:   contactInfo,
+                    availableFrom: tsAvailable.dateValue(),
+                    isListed: isListed,
+                    createdAt: tsCreated.dateValue()
                 )
                 completion(.success(prop))
             }
         }
 
     // MARK: — Add / Update / Delete property
-    func addProperty(_ p: PropertyModel, completion: @escaping (Error?) -> Void) {
-        let dict: [String:Any] = [
-            "ownerId": p.ownerId,
-            "title": p.title,
-            "description": p.description,
-            "address": p.address,
-            "latitude": p.latitude as Any,
-            "longitude": p.longitude as Any,
-            "isListed": p.isListed,
-            "createdAt": p.createdAt
-        ]
-        db.collection(Constants.propertiesCollection)
-          .addDocument(data: dict, completion: completion)
-    }
+        func addProperty(_ p: PropertyModel, completion: @escaping (Error?) -> Void) {
+            let dict: [String:Any] = [
+                "ownerId":       p.ownerId,
+                "title":         p.title,
+                "description":   p.description,
+                "address":       p.address,
+                "latitude":      p.latitude as Any,
+                "longitude":     p.longitude as Any,
+                "isListed":      p.isListed,
+                "createdAt":     p.createdAt,
+                "monthlyRent":   p.monthlyRent,
+                "bedrooms":      p.bedrooms,
+                "squareFootage": p.squareFootage,
+                "bathrooms":     p.bathrooms,
+                "contactInfo":   p.contactInfo,
+                "availableFrom": p.availableFrom
+            ]
+            db.collection(Constants.propertiesCollection)
+              .addDocument(data: dict, completion: completion)
+        }
 
-    func updateProperty(_ p: PropertyModel, completion: @escaping (Error?) -> Void) {
-        let dict: [String:Any] = [
-            "title": p.title,
-            "description": p.description,
-            "address": p.address,
-            "latitude": p.latitude as Any,
-            "longitude": p.longitude as Any,
-            "isListed": p.isListed
-        ]
-        db.collection(Constants.propertiesCollection)
-          .document(p.id)
-          .setData(dict, merge: true, completion: completion)
-    }
+        func updateProperty(_ p: PropertyModel, completion: @escaping (Error?) -> Void) {
+            let dict: [String:Any] = [
+                "title":         p.title,
+                "description":   p.description,
+                "address":       p.address,
+                "latitude":      p.latitude as Any,
+                "longitude":     p.longitude as Any,
+                "isListed":      p.isListed,
+                "monthlyRent":   p.monthlyRent,
+                "bedrooms":      p.bedrooms,
+                "squareFootage": p.squareFootage,
+                "bathrooms":     p.bathrooms,
+                "contactInfo":   p.contactInfo,
+                "availableFrom": p.availableFrom
+            ]
+            db.collection(Constants.propertiesCollection)
+              .document(p.id)
+              .setData(dict, merge: true, completion: completion)
+        }
 
-    func deleteProperty(_ p: PropertyModel, completion: @escaping (Error?) -> Void) {
-        db.collection(Constants.propertiesCollection)
-          .document(p.id)
-          .updateData(["isListed": false], completion: completion)
-    }
+        func deleteProperty(_ p: PropertyModel, completion: @escaping (Error?) -> Void) {
+            db.collection(Constants.propertiesCollection)
+              .document(p.id)
+              .updateData(["isListed": false], completion: completion)
+        }
+
     
     func deletePropertyAndRequests(
             propertyId: String,

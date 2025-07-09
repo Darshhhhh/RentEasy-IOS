@@ -5,14 +5,6 @@
 //  Created by Darsh on 2025-07-08.
 //
 
-
-//
-//  SignupView.swift
-//  G1_Rental
-//
-//  Updated by Darsh on 2025-07-10.
-//
-
 import SwiftUI
 
 struct SignupView: View {
