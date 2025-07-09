@@ -2,11 +2,12 @@
 //  TenantPropertyDetailView.swift
 //  G1_Rental
 //
-//  Updated by Darsh on 2025-07-12.
+//  Updated by Darsh on 2025-07-13.
 //
 
 import SwiftUI
 import MapKit
+import UIKit
 
 struct TenantPropertyDetailView: View {
     let property: PropertyModel
@@ -14,18 +15,38 @@ struct TenantPropertyDetailView: View {
     @Environment(\.presentationMode) var presentation
 
     // Shortlist state
-    @State private var isShortlisted           = false
-    @State private var showRemoveShortlistCD   = false
-    @State private var showShortlistAlert      = false
-    @State private var shortlistMessage        = ""
+    @State private var isShortlisted             = false
+    @State private var showRemoveShortlistCD     = false
+    @State private var showShortlistAlert        = false
+    @State private var shortlistMessage          = ""
 
     // Request state
     @State private var currentRequest: RequestModel?
-    @State private var requestSent             = false
-    @State private var showWithdrawConfirmation = false
-    @State private var showRequestAlert        = false
+    @State private var requestSent               = false
+    @State private var showWithdrawConfirmation  = false
+    @State private var showRequestAlert          = false
+
+    // Share state
+    @State private var showShareSheet            = false
 
     private let service = FirestoreService()
+
+    // MARK: — Share Content
+    private var shareText: String {
+        """
+        G1 RentalApp Listing:
+
+        Title: \(property.title)
+        Description: \(property.description)
+        Address: \(property.address)
+        Monthly Rent: $\(Int(property.monthlyRent))
+        Bedrooms: \(property.bedrooms)
+        Bathrooms: \(String(format: "%.1f", property.bathrooms))
+        Available From: \(DateFormatter.localizedString(from: property.availableFrom, dateStyle: .medium, timeStyle: .none))
+
+        Contact: \(property.contactInfo)
+        """
+    }
 
     var body: some View {
         ScrollView {
@@ -46,9 +67,7 @@ struct TenantPropertyDetailView: View {
                     fieldRow(icon: "mappin.and.ellipse",     label: "Address",        value: property.address)
                     fieldRow(icon: "dollarsign.circle.fill", label: "Monthly Rent",   value: String(format: "$%.0f", property.monthlyRent))
                     fieldRow(icon: "bed.double.fill",        label: "Bedrooms",       value: "\(property.bedrooms)")
-                    fieldRow(icon: "ruler.fill",             label: "Square Footage", value: String(format: "%.0f sq ft", property.squareFootage))
                     fieldRow(icon: "bathtub.fill",           label: "Bathrooms",      value: String(format: "%.1f", property.bathrooms))
-                    fieldRow(icon: "phone.fill",             label: "Contact Info",   value: property.contactInfo)
                     fieldRow(icon: "calendar",               label: "Available From", value:
                         DateFormatter.localizedString(
                             from: property.availableFrom,
@@ -56,6 +75,7 @@ struct TenantPropertyDetailView: View {
                             timeStyle: .none
                         )
                     )
+                    fieldRow(icon: "phone.fill",             label: "Contact Info",   value: property.contactInfo)
                 }
                 .padding(.horizontal)
 
@@ -124,6 +144,20 @@ struct TenantPropertyDetailView: View {
                     .alert("Request \(requestSent ? "withdrawn" : "sent")", isPresented: $showRequestAlert) {
                         Button("OK", role: .cancel) {}
                     }
+
+                    // Share button
+                    Button {
+                        showShareSheet = true
+                    } label: {
+                        Label("Share", systemImage: "square.and.arrow.up")
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.blue)
+                    .sheet(isPresented: $showShareSheet) {
+                        ActivityView(activityItems: [shareText])
+                    }
                 }
                 .padding(.horizontal)
             }
@@ -148,7 +182,7 @@ struct TenantPropertyDetailView: View {
 
     private func loadInitialState() {
         guard let uid = authVM.user?.uid else { return }
-        // shortlist
+        // Load shortlist state
         service.fetchShortlist(tenantId: uid) { result in
             DispatchQueue.main.async {
                 if case .success(let items) = result {
@@ -156,7 +190,7 @@ struct TenantPropertyDetailView: View {
                 }
             }
         }
-        // existing request?
+        // Load existing request state
         service.fetchTenantRequest(tenantId: uid, propertyId: property.id) { result in
             DispatchQueue.main.async {
                 if case .success(let req) = result, let req = req {
@@ -238,3 +272,17 @@ struct TenantPropertyDetailView: View {
     }
 }
 
+// UIKit share sheet wrapper
+fileprivate struct ActivityView: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems,
+                                 applicationActivities: nil)
+    }
+
+    func updateUIViewController(
+        _ uiViewController: UIActivityViewController,
+        context: Context
+    ) {}
+}
