@@ -13,15 +13,17 @@ struct GuestRootView: View {
     var body: some View {
         NavigationStack {
             GuestDashboardView()
-                .toolbar {
-                    ToolbarItem(placement: .bottomBar) {
-                        Button("Sign In Now") {
-                            // Clear out the guest and return to login
-                            authVM.user = nil
-                        }
-                        .foregroundColor(.blue)
-                    }
-                }
+            Button {
+                authVM.user = nil
+            } label: {
+                Label("Log in to make inquiries", systemImage: "person.crop.circle.badge.questionmark")
+                    .frame(maxWidth: .infinity)
+                    .padding()
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.blue)
+            .padding(.horizontal)
+               
         }
     }
 }
