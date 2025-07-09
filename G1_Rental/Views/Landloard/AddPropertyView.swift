@@ -12,12 +12,15 @@ import CoreLocation
 struct AddPropertyView: View {
     @Environment(\.presentationMode) var presentation
     @EnvironmentObject var authVM: AuthViewModel
-    @State private var title = ""
+
+    @State private var title       = ""
     @State private var description = ""
-    @State private var address = ""
-    @State private var latitude: String = ""
-    @State private var longitude: String = ""
-    private let service = FirestoreService()
+    @State private var address     = ""
+    @State private var isSaving    = false
+    @State private var errorMessage: String?
+
+    private let geocoder = CLGeocoder()
+    private let service  = FirestoreService()
 
     var body: some View {
         NavigationView {
@@ -26,37 +29,80 @@ struct AddPropertyView: View {
                     TextField("Title", text: $title)
                     TextField("Description", text: $description)
                 }
+
                 Section("Location") {
                     TextField("Address", text: $address)
-                    TextField("Latitude", text: $latitude)
-                    TextField("Longitude", text: $longitude)
+                }
+
+                if let msg = errorMessage {
+                    Section {
+                        Text(msg)
+                            .foregroundColor(.red)
+                    }
                 }
             }
             .navigationTitle("Add Property")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        guard let uid = authVM.user?.uid else { return }
-                        let prop = PropertyModel(
-                            id: UUID().uuidString,
-                            ownerId: uid,
-                            title: title,
-                            description: description,
-                            address: address,
-                            latitude: Double(latitude),
-                            longitude: Double(longitude),
-                            isListed: true,
-                            createdAt: Date()
-                        )
-                        service.addProperty(prop) { _ in
-                            presentation.wrappedValue.dismiss()
+                    if isSaving {
+                        ProgressView()
+                    } else {
+                        Button("Save") {
+                            saveProperty()
                         }
+                        .disabled(title.isEmpty || address.isEmpty)
                     }
                 }
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { presentation.wrappedValue.dismiss() }
+                    Button("Cancel") {
+                        presentation.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private func saveProperty() {
+        guard let uid = authVM.user?.uid else { return }
+        isSaving = true
+        errorMessage = nil
+
+        geocoder.geocodeAddressString(address) { placemarks, error in
+            DispatchQueue.main.async {
+                isSaving = false
+
+                if let error = error {
+                    errorMessage = "Geocoding error: \(error.localizedDescription)"
+                    return
+                }
+                guard let loc = placemarks?.first?.location else {
+                    errorMessage = "Can't find that address."
+                    return
+                }
+
+                let prop = PropertyModel(
+                    id: UUID().uuidString,
+                    ownerId: uid,
+                    title: title,
+                    description: description,
+                    address: address,
+                    latitude: loc.coordinate.latitude,
+                    longitude: loc.coordinate.longitude,
+                    isListed: true,
+                    createdAt: Date()
+                )
+
+                service.addProperty(prop) { err in
+                    DispatchQueue.main.async {
+                        if let err = err {
+                            errorMessage = "Save failed: \(err.localizedDescription)"
+                        } else {
+                            presentation.wrappedValue.dismiss()
+                        }
+                    }
                 }
             }
         }
     }
 }
+

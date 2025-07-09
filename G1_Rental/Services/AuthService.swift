@@ -24,7 +24,7 @@ class AuthService {
                 "name": name,
                 "role": role,
                 "contact": "",
-                "paymentInfo": ""
+                "cardNumber": ""
             ]
             self.db.collection(Constants.usersCollection).document(uid).setData(data) { err in
                 if let err = err { return completion(.failure(err)) }

@@ -11,27 +11,38 @@ class FirestoreService {
 
     // MARK: — Fetch single user
     func fetchUser(uid: String, completion: @escaping (Result<UserModel, Error>) -> Void) {
-        db.collection(Constants.usersCollection).document(uid).getDocument { snapshot, error in
+        db.collection(Constants.usersCollection)
+          .document(uid)
+          .getDocument { snapshot, error in
             if let error = error {
-                return completion(.failure(error))
+              return completion(.failure(error))
             }
+            guard let data = snapshot?.data() else {
+              return completion(.failure(FirestoreError.parsingError))
+            }
+
+            // Required
             guard
-                let data = snapshot?.data(),
-                let email = data["email"]     as? String,
-                let name  = data["name"]      as? String,
-                let role  = data["role"]      as? String,
-                let contact     = data["contact"]     as? String,
-                let paymentInfo = data["paymentInfo"] as? String
+              let email = data["email"] as? String,
+              let name  = data["name"]  as? String,
+              let role  = data["role"]  as? String
             else {
-                return completion(.failure(FirestoreError.parsingError))
+              return completion(.failure(FirestoreError.parsingError))
             }
+
+            // Optional with defaults
+            let contact    = data["contact"]    as? String ?? ""
+            let cardNumber = data["cardNumber"] as? String
+                           ?? data["paymentInfo"] as? String
+                           ?? ""
+
             let user = UserModel(
                 uid: uid,
                 email: email,
                 name: name,
                 role: role,
                 contact: contact,
-                paymentInfo: paymentInfo
+                cardNumber: cardNumber
             )
             completion(.success(user))
         }
@@ -42,7 +53,7 @@ class FirestoreService {
         let data: [String:Any] = [
             "name": user.name,
             "contact": user.contact,
-            "paymentInfo": user.paymentInfo
+            "cardNumber": user.cardNumber
         ]
         db.collection(Constants.usersCollection)
           .document(user.uid)

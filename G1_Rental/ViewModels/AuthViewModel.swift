@@ -43,12 +43,12 @@ class AuthViewModel: ObservableObject {
     func loginAsGuest() {
         // dummy UserModel with role "guest"
         let guestUser = UserModel(
-            uid: UUID().uuidString,
-            email: "",
-            name: "Guest",
-            role: "guest",
-            contact: "",
-            paymentInfo: ""
+                    uid: UUID().uuidString,
+                    email: "guest@guest.com",
+                    name: "Guest",
+                    role: "guest",
+                    contact: "+123456789",
+                    cardNumber: "555-666-555-5555"
         )
         // Immediately show guest UI
         self.user = guestUser
