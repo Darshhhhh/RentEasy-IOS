@@ -94,6 +94,40 @@ class FirestoreService {
             completion(.success(models))
         }
     }
+    
+    // MARK: — Fetch single property
+    func fetchProperty(id: String, completion: @escaping (Result<PropertyModel, Error>) -> Void) {
+            db.collection(Constants.propertiesCollection)
+              .document(id)
+              .getDocument { snap, err in
+                if let err = err {
+                    return completion(.failure(err))
+                }
+                guard
+                  let d = snap?.data(),
+                  let ownerId   = d["ownerId"]   as? String,
+                  let title     = d["title"]     as? String,
+                  let desc      = d["description"]as? String,
+                  let address   = d["address"]   as? String,
+                  let isListed  = d["isListed"]  as? Bool,
+                  let ts        = d["createdAt"] as? Timestamp
+                else {
+                  return completion(.failure(FirestoreError.parsingError))
+                }
+                let prop = PropertyModel(
+                  id: id,
+                  ownerId: ownerId,
+                  title: title,
+                  description: desc,
+                  address: address,
+                  latitude: d["latitude"]   as? Double,
+                  longitude: d["longitude"] as? Double,
+                  isListed: isListed,
+                  createdAt: ts.dateValue()
+                )
+                completion(.success(prop))
+            }
+        }
 
     // MARK: — Add / Update / Delete property
     func addProperty(_ p: PropertyModel, completion: @escaping (Error?) -> Void) {
@@ -130,6 +164,34 @@ class FirestoreService {
           .document(p.id)
           .updateData(["isListed": false], completion: completion)
     }
+    
+    func deletePropertyAndRequests(
+            propertyId: String,
+            completion: @escaping (Error?) -> Void
+        ) {
+            let batch = db.batch()
+            
+            // 1) unlist the property
+            let propRef = db
+                .collection(Constants.propertiesCollection)
+                .document(propertyId)
+            batch.updateData(["isListed": false], forDocument: propRef)
+            
+            // 2) fetch all requests for that property
+            db.collection(Constants.requestsCollection)
+              .whereField("propertyId", isEqualTo: propertyId)
+              .getDocuments { snap, err in
+                if let err = err {
+                  return completion(err)
+                }
+                // 3) delete each request doc
+                snap?.documents.forEach { doc in
+                  batch.deleteDocument(doc.reference)
+                }
+                // 4) commit the batch
+                batch.commit(completion: completion)
+            }
+        }
 
     // MARK: — Requests
     func fetchRequests(ownerId: String,

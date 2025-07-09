@@ -14,24 +14,48 @@ struct LandlordDashboardView: View {
     @State private var showAdd = false
 
     var body: some View {
-        NavigationView {
-            List(vm.properties) { prop in
-                NavigationLink(prop.title) {
-                    PropertyDetailView(property: prop)
-                }
-            }
-            .navigationTitle("My Properties")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showAdd.toggle() }) {
-                        Image(systemName: "plus")
+        List(vm.properties) { prop in
+            NavigationLink {
+                PropertyDetailView(property: prop)
+                    .environmentObject(authVM)
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "house.fill")
+                        .font(.title2)
+                        .foregroundColor(.green)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(prop.title)
+                            .font(.headline)
+                            .foregroundColor(.primary)
+
+                        Text(prop.address)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
                     }
                 }
+                .padding(.vertical, 8)
             }
-            .sheet(isPresented: $showAdd) {
-                AddPropertyView()
+        }
+        .listStyle(.insetGrouped)
+        .navigationTitle("My Properties")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showAdd.toggle()
+                } label: {
+                    Label("Add Property", systemImage: "plus.circle.fill")
+                        .font(.headline)
+                }
+                .tint(.blue)
             }
-            .onAppear { vm.fetchAll() }
+        }
+        .sheet(isPresented: $showAdd) {
+            AddPropertyView()
+                .environmentObject(authVM)
+        }
+        .onAppear {
+            vm.fetchAll()
         }
     }
 }

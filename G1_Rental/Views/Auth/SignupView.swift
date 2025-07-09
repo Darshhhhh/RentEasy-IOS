@@ -6,35 +6,115 @@
 //
 
 
+//
+//  SignupView.swift
+//  G1_Rental
+//
+//  Updated by Darsh on 2025-07-10.
+//
+
 import SwiftUI
 
 struct SignupView: View {
     @EnvironmentObject var authVM: AuthViewModel
-    @State private var email = ""
+
+    @State private var name     = ""
+    @State private var email    = ""
     @State private var password = ""
-    @State private var name = ""
-    @State private var role = "tenant"
+    @State private var role     = "tenant"
     private let roles = ["tenant", "landlord"]
+    @State private var errorMessage: String?
 
     var body: some View {
-        Form {
-            Section(header: Text("Account")) {
-                TextField("Name", text: $name)
-                TextField("Email", text: $email)
-                    .autocapitalization(.none)
-                SecureField("Password", text: $password)
+        VStack(spacing: 32) {
+            Spacer()
+
+            // Header
+            HStack(spacing: 12) {
+                Image(systemName: "person.badge.plus.fill")
+                    .font(.largeTitle)
+                    .foregroundColor(.blue)
+                Text("Create Account")
+                    .font(.largeTitle)
+                    .bold()
+            }
+
+            // Input fields
+            VStack(spacing: 16) {
+                HStack {
+                    Image(systemName: "person.fill")
+                        .foregroundColor(.gray)
+                    TextField("Name", text: $name)
+                }
+                .padding()
+                .background(Color(.secondarySystemBackground))
+                .cornerRadius(8)
+
+                HStack {
+                    Image(systemName: "envelope")
+                        .foregroundColor(.gray)
+                    TextField("Email", text: $email)
+                        .keyboardType(.emailAddress)
+                        .autocapitalization(.none)
+                }
+                .padding()
+                .background(Color(.secondarySystemBackground))
+                .cornerRadius(8)
+
+                HStack {
+                    Image(systemName: "lock.fill")
+                        .foregroundColor(.gray)
+                    SecureField("Password", text: $password)
+                }
+                .padding()
+                .background(Color(.secondarySystemBackground))
+                .cornerRadius(8)
+
                 Picker("Role", selection: $role) {
                     ForEach(roles, id: \.self) { Text($0.capitalized) }
                 }
                 .pickerStyle(SegmentedPickerStyle())
+                .padding(.top)
             }
-            Button("Sign Up") {
-                authVM.signUp(email: email, password: password, name: name, role: role)
-            }
+            .padding(.horizontal)
+
+            // Error message
             if let err = authVM.errorMessage {
-                Text(err).foregroundColor(.red)
+                Text(err)
+                    .font(.footnote)
+                    .foregroundColor(.red)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
             }
+
+            // Action buttons
+            VStack(spacing: 16) {
+                Button {
+                    authVM.signUp(email: email, password: password, name: name, role: role)
+                } label: {
+                    Label("Sign Up", systemImage: "checkmark.circle.fill")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.blue)
+
+                NavigationLink {
+                    LoginView()
+                        .environmentObject(authVM)
+                } label: {
+                    Label("Back to Login", systemImage: "arrow.left.circle")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                }
+                .buttonStyle(.bordered)
+                .tint(.gray)
+            }
+            .padding(.horizontal)
+
+            Spacer()
         }
-        .navigationTitle("Create Account")
+        .navigationTitle("Sign Up")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
