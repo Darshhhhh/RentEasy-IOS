@@ -13,7 +13,7 @@ struct GuestPropertyDetailView: View {
     let property: PropertyModel
     @EnvironmentObject var authVM: AuthViewModel
     @Environment(\.presentationMode) var presentation
-
+    
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
@@ -25,7 +25,7 @@ struct GuestPropertyDetailView: View {
                     .frame(height: 200)
                     .cornerRadius(12)
                 }
-
+                
                 // Property details
                 VStack(alignment: .leading, spacing: 20) {
                     fieldRow(icon: "house.fill",             label: "Title",          value: property.title)
@@ -37,15 +37,15 @@ struct GuestPropertyDetailView: View {
                     fieldRow(icon: "bathtub.fill",           label: "Bathrooms",      value: String(format: "%.1f", property.bathrooms))
                     fieldRow(icon: "phone.fill",             label: "Contact Info",   value: property.contactInfo)
                     fieldRow(icon: "calendar",               label: "Available From", value:
-                        DateFormatter.localizedString(
-                            from: property.availableFrom,
-                            dateStyle: .medium,
-                            timeStyle: .none
-                        )
+                                DateFormatter.localizedString(
+                                    from: property.availableFrom,
+                                    dateStyle: .medium,
+                                    timeStyle: .none
+                                )
                     )
                 }
                 .padding(.horizontal)
-
+                
                 // Prompt to log in for actions
                 Button {
                     // pop back to login
@@ -65,7 +65,7 @@ struct GuestPropertyDetailView: View {
         .navigationTitle("Details")
         .navigationBarTitleDisplayMode(.inline)
     }
-
+    
     private func fieldRow(icon: String, label: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {

@@ -47,7 +47,7 @@ struct RequestsListView: View {
     }
 }
 
-// RequestRowView unchanged
+// RequestRowView
 struct RequestRowView: View {
     let request: RequestModel
     @State private var propertyName: String = "Loading…"

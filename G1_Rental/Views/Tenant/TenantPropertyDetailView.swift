@@ -51,7 +51,7 @@ struct TenantPropertyDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                // Map (flush left)
+                // Map 
                 if let lat = property.latitude, let lon = property.longitude {
                     MapView(
                         coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon)

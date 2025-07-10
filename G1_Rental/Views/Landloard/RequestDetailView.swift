@@ -45,8 +45,6 @@ struct RequestDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                
-                // Property row: tappable if we have the model
                 if let prop = propertyModel {
                     NavigationLink {
                         PropertyDetailView(property: prop)
@@ -65,15 +63,11 @@ struct RequestDetailView: View {
                         value: propertyName
                     )
                 }
-
-                // Requested By
                 infoRow(
                     icon: "person.crop.circle",
                     label: "Requested By",
                     value: tenantEmail
                 )
-
-                // Requested On
                 infoRow(
                     icon: "calendar",
                     label: "Requested On",
@@ -100,8 +94,6 @@ struct RequestDetailView: View {
                     .cornerRadius(8)
                 }
                 .padding(.vertical, 6)
-
-                // Update Status button
                 Button(action: saveStatus) {
                     Label("Update Status", systemImage: "square.and.arrow.down")
                         .frame(maxWidth: .infinity)
@@ -109,8 +101,6 @@ struct RequestDetailView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.blue)
-
-                // Contact Tenant button
                 Button(action: contactTenant) {
                     Label("Contact Tenant", systemImage: "envelope")
                         .frame(maxWidth: .infinity)

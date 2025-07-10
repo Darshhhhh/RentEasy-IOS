@@ -115,15 +115,12 @@ struct AddPropertyView: View {
                     address: address,
                     latitude: loc.coordinate.latitude,
                     longitude: loc.coordinate.longitude,
-
-                    // new
                     monthlyRent:   rent,
                     bedrooms:      beds,
                     squareFootage: sqft,
                     bathrooms:     baths,
                     contactInfo:   contactInfo,
                     availableFrom: availableFrom,
-
                     isListed:      true,
                     createdAt:     Date()
                 )

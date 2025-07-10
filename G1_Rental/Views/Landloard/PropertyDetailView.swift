@@ -61,8 +61,6 @@ struct PropertyDetailView: View {
                     fieldRow(icon: "textformat", label: "Title", content: $titleText)
                     fieldRow(icon: "doc.text", label: "Description", content: $descriptionText)
                     fieldRow(icon: "mappin.and.ellipse", label: "Address", content: $addressText)
-
-                    // ─── New fields ───────────────────
                     fieldRow(icon: "dollarsign.circle", label: "Monthly Rent", content: $monthlyRentText)
                     fieldRow(icon: "bed.double.fill",  label: "Bedrooms",     content: $bedroomsText)
                     fieldRow(icon: "ruler",            label: "Square Footage",content: $squareFootageText)
@@ -83,7 +81,6 @@ struct PropertyDetailView: View {
                                 .foregroundColor(.secondary)
                         }
                     }
-                    // ──────────────────────────────────
                 }
                 .padding(.horizontal)
 
@@ -167,15 +164,12 @@ struct PropertyDetailView: View {
             address: addressText,
             latitude: property.latitude,
             longitude: property.longitude,
-
-            // new
             monthlyRent:   rent,
             bedrooms:      beds,
             squareFootage: sqft,
             bathrooms:     baths,
             contactInfo:   contactInfoText,
             availableFrom: availableFrom,
-
             isListed: property.isListed,
             createdAt: property.createdAt
         )
