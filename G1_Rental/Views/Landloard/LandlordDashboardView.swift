@@ -2,14 +2,7 @@
 //  LandlordDashboardView.swift
 //  G1_Rental
 //
-//  Created by Darsh on 2025-07-08.
-//
-
-//
-//  LandlordDashboardView.swift
-//  G1_Rental
-//
-//  Updated by Darsh on 2025-07-12.
+//  Updated by Darsh on 2025-07-14.
 //
 
 import SwiftUI
@@ -72,9 +65,10 @@ struct LandlordDashboardView: View {
                 .environmentObject(authVM)
         }
         .onAppear {
-            vm.fetchAll()
+            // Load only this landlord's own properties
+            if let uid = authVM.user?.uid {
+                vm.fetchOwnerProperties(ownerId: uid)
+            }
         }
     }
 }
-
-

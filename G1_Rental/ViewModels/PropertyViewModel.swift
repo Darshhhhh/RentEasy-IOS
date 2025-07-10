@@ -2,9 +2,8 @@
 //  PropertyViewModel.swift
 //  G1_Rental
 //
-//  Created by Darsh on 2025-07-08.
+//  Updated by Darsh on 2025-07-14.
 //
-
 
 import Foundation
 
@@ -12,10 +11,24 @@ class PropertyViewModel: ObservableObject {
     @Published var properties: [PropertyModel] = []
     private let service = FirestoreService()
 
+    // Fetch all listed properties (for tenants & guests)
     func fetchAll() {
         service.fetchProperties { result in
             DispatchQueue.main.async {
-                if case .success(let arr) = result { self.properties = arr }
+                if case .success(let arr) = result {
+                    self.properties = arr
+                }
+            }
+        }
+    }
+
+    // Fetch *only* this landlord’s listings
+    func fetchOwnerProperties(ownerId: String) {
+        service.fetchProperties { result in
+            DispatchQueue.main.async {
+                if case .success(let allProps) = result {
+                    self.properties = allProps.filter { $0.ownerId == ownerId }
+                }
             }
         }
     }
@@ -32,3 +45,4 @@ class PropertyViewModel: ObservableObject {
         service.deleteProperty(prop) { _ in self.fetchAll() }
     }
 }
+
